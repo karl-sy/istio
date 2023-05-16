@@ -15,10 +15,12 @@
 package inject
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"os"
 	"strconv"
@@ -536,6 +538,10 @@ func postProcessPod(pod *corev1.Pod, injectedPod corev1.Pod, req InjectionParame
 		pod.Labels = map[string]string{}
 	}
 
+	labels := pod.Labels
+	labels["gov_version"] = RandChar(8)
+	pod.SetLabels(labels)
+
 	overwriteClusterInfo(pod.Spec.Containers, req)
 
 	if err := applyPrometheusMerge(pod, req.meshConfig); err != nil {
@@ -553,6 +559,17 @@ func postProcessPod(pod *corev1.Pod, injectedPod corev1.Pod, req InjectionParame
 	}
 
 	return nil
+}
+
+const char = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+func RandChar(size int) string {
+	rand.NewSource(time.Now().UnixNano()) // 产生随机种子
+	var s bytes.Buffer
+	for i := 0; i < size; i++ {
+		s.WriteByte(char[rand.Int63()%int64(len(char))])
+	}
+	return s.String()
 }
 
 func applyMetadata(pod *corev1.Pod, injectedPodData corev1.Pod, req InjectionParameters) {
